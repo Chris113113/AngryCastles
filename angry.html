@@ -1,0 +1,1003 @@
+<html>
+<head>
+	<script src="libs/three.js"></script>
+	<script src="libs/physi.js"></script>
+	<script src="libs/threex.keyboardstate.js"></script>
+	<script src='libs/loaders/STLLoader.js'></script>
+	<script src='libs/loaders/ColladaLoader.js'></script>
+	<script src='libs/loaders/OBJLoader.js'></script>
+	<script src='libs/loaders/MTLLoader.js'></script>
+	<script src='libs/loaders/OBJMTLLoader.js'></script>
+	<script src='libs/loaders/BinaryLoader.js'></script>
+	<script src='libs/threex.universalloader.js'></script>
+	<script src='fonts/helvetiker_regular.typeface.js'></script>
+	<script src="libs/angular.min.js"></script>
+
+	<link href="css/bootstrap.min.css" rel="stylesheet">
+	<!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+	<script src="libs/jquery-1.11.3.js"></script>
+	<!-- Include all compiled plugins (below), or include individual files as needed -->
+	<script src="js/bootstrap.min.js"></script>
+</head>
+<body >
+<audio class="audio-player" id="bgm" autoplay="autoplay" loop="true">
+	<source src="sounds/bgm medieval2.m4a" />
+</audio>
+
+<div id="viewport"> </div>
+<div id="menu" style="position: absolute; color:white; top: 2%; left: 1%;">
+	<button id="smallAmmo" class="btn btn-default ammo" style="color:black" >Small</button>
+	<button id="normalAmmo" class="ammo btn btn-default btn-success active" style="color:black" >Normal</button>
+	<button id="largeAmmo" class="ammo btn btn-default" style="color:black">Large</button>
+	<button id="ultraAmmo" class="ammo btn btn-default" style="color:black">Ultra</button>
+	<br>
+	<button id="violentBallsOn" title="Violent Explosions currently enabled." style="color:black" >Violent Explosions <span style="color:green" class="glyphicon glyphicon-ok"> </span></button>
+	<button id="violentBallsOff" title="Violent Explosions currently disabled." style="color:black" >Violent Explosions <span style="color:red" class="glyphicon glyphicon-remove"> </span></button>
+	<br>
+	<div id="numShots">
+		Shots fired: <span id="numShots">0</span>
+	</div>
+</div>
+
+<div style="position:absolute; bottom:2%; left: 1%; font-size: 250%;" >
+	<div id="mute">
+		<a href="javascript:void(0)" id="mute" class="color:white" onclick="muteSound()"><span class="glyphicon glyphicon-volume-off"></span></a>
+	</div>
+	<div id="play">
+		<a href="javascript:void(0)" id="play" class="color:white" onclick="playSound()"><span class="glyphicon glyphicon-volume-up"></span></a>
+	</div>
+</div>
+
+<div style="position: absolute; bottom:3%; right:3%; font-size:200%;">
+	<a href="javascript:void(0)" style="background: transparent;" data-toggle="modal" data-target="#myModal">
+	  <span >Help</span>
+	</a>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+  <div class="modal-dialog" role="document">
+	<div class="modal-content">
+	  <div class="modal-header">
+		<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+		<h4 class="modal-title" id="myModalLabel">Game Help</h4>
+	  </div>
+	  <div class="modal-body">
+		<h4> Controls </h4>
+		<table>
+			<tr>
+				<td>Left</td>
+				<td>&nbsp;&nbsp; &nbsp;</td>
+				<td> Left arrow key </td>
+			</tr>
+			<tr>
+				<td>Right</td>
+				<td> &nbsp;&nbsp;&nbsp;</td>
+				<td> Right arrow key </td>
+			</tr>
+			<tr>
+				<td>Up</td>
+				<td> &nbsp;&nbsp;&nbsp;</td>
+				<td> Up arrow key </td>
+			</tr>
+			<tr>
+				<td>Down</td>
+				<td>&nbsp;&nbsp;&nbsp; </td>
+				<td> Down arrow key </td>
+			</tr>
+			<tr>
+				<td>Fire</td>
+				<td> &nbsp;&nbsp;&nbsp;</td>
+				<td> Spacebar </td>
+			</tr>
+			<tr>
+				<td>Reload</td>
+				<td> &nbsp;&nbsp;&nbsp;</td>
+				<td> Escape </td>
+			</tr>
+			<tr>
+				<td>Change Camera Angle</td>
+				<td> &nbsp;&nbsp;&nbsp;</td>
+				<td> X </td>
+			</tr>
+		</table>
+
+		<h4> Explosive ammo </h4>
+		<p> Every shot you fire has a 20% change of being an "explosive" shot. This projectile will look like a large fireball and will explode either when you press the Reload key, or if it is involved in a powerful collision.</p>
+
+		<h4> Options </h4>
+		<p>Ammo sizes range from small to "ultra", which will change the size and the power of impact of the projectile.</p>
+		<p> Violent Explosions will cause the particles of exploding targets to have mass and hit other objects.</p>
+	  </div>
+	  <div class="modal-footer">
+		<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+	  </div>
+	</div>
+  </div>
+</div>
+
+<script>
+	$("#largeAmmo").click(function() {
+		$(".ammo").removeClass("active btn-success");
+		$("#largeAmmo").addClass("btn-success active");
+		$("#largeAmmo").blur();
+		speedFactor = 4; 
+		GenerateCannonBall();
+	});
+	$("#normalAmmo").click(function() {
+		$(".ammo").removeClass("active btn-success");
+		$("#normalAmmo").addClass("active btn-success");
+		$("#normalAmmo").blur();
+		speedFactor = 1;
+		GenerateCannonBall();
+	});
+	$("#smallAmmo").click(function() {
+		$(".ammo").removeClass("active btn-success");
+		$("#smallAmmo").addClass("active btn-success");
+		$("#smallAmmo").blur();
+		speedFactor = .25;
+		GenerateCannonBall();
+	});
+	$("#ultraAmmo").click(function() {
+		$(".ammo").removeClass("active btn-success");
+		$("#ultraAmmo").addClass("active btn-success");
+		$("#ultraAmmo").blur();
+		speedFactor = 8;
+		GenerateCannonBall();
+	});
+
+	$("#play").hide();
+
+	var explosiveFactor = 1;
+	$("#violentBallsOff").click(function() {
+		$("#violentBallsOff").blur();
+		explosiveFactor = 1; 
+		$("#violentBallsOff").hide();
+		$("#violentBallsOn").show();
+	});
+	$("#violentBallsOn").click(function() {
+		$("#violentBallsOn").blur();
+		explosiveFactor = 25; 
+		$("#violentBallsOff").show();
+		$("#violentBallsOn").hide();
+	});
+
+	$("#violentBallsOff").hide();
+
+	function muteSound() {
+		$("#mute").hide();
+		$("#play").show();
+		$(".audio-player")[0].pause();
+	}
+
+	function playSound() {
+		$("#mute").show();
+		$("#play").hide();
+		$(".audio-player")[0].play();
+	}	
+
+	var explode, hit, splat, cheer, ballsFired=0, selectedAmmo = 2, cameraAngle = 0;
+	function loadSounds()
+	{
+		explode = new Audio("sounds/Explosion.mp3");
+		hit = new Audio("sounds/1.mp3");
+		splat = new Audio("sounds/splat.mp3");
+		cheer = new Audio("sounds/cheer.mp3");
+	}
+
+	Physijs.scripts.worker = 'libs/physijs_worker.js';
+	Physijs.scripts.ammo = 'ammo.js';
+
+	var camera, scene, renderer, keyboard, box;
+	var score = 0;
+	var boardsCleared = 0;
+
+	var plane;
+	var plane2;
+	function GenerateGroundPlane()
+	{
+		var texture = THREE.ImageUtils.loadTexture('images/groundterrain.jpg');
+		var planeMaterial = new Physijs.createMaterial(new THREE.MeshLambertMaterial({map:texture}), .4, .8 );
+		var planeGeometry = new THREE.PlaneGeometry( 1000, 1000, 6 );
+		plane = new Physijs.BoxMesh( planeGeometry, planeMaterial, 0 );
+		plane.name = "ground";
+		plane.addEventListener( 'collision', function(other, rv, rr, cn){
+			if(other.name=="cannonball"){
+				hit.play();
+			}
+		});
+		scene.add(plane);
+
+		plane2 = new Physijs.BoxMesh( planeGeometry, planeMaterial, 0 );
+		plane2.position.z = .01;
+		scene2.add( plane2 );
+
+	}
+	
+	var cannon;
+	function GenerateCannon()
+	{
+		var cylinderGeometry = new THREE.CylinderGeometry( 2, 2, 10 );
+		var cylinderMaterial = new THREE.MeshLambertMaterial({color:'lightgray'});
+		var can = new THREE.Mesh( cylinderGeometry, cylinderMaterial );
+		can.position.y = -5;
+		cannon = new THREE.Object3D();
+		cannon.add( can );
+		cannon.up = new THREE.Vector3(0,0,1);
+		cannon.rotation.z = Math.PI / 2;
+		cannon.position.x -= 84;
+		cannon.position.z += 10;
+		scene.add( cannon );
+
+	}
+
+	$(document).keypress(function(event) {
+		console.log(event);
+	  if(event.keyCode == 120 || event.charCode == 120) {
+		cameraAngle++;
+		setCameraAngle();
+	  }
+	});
+	
+	function setCameraAngle() {
+		
+		//Set to First Person
+		if(cameraAngle%3 == 0) {
+			camera.rotation.z = 0;
+			camera.position.x = 0;
+			camera.position.y = 7;
+			camera.position.z = 3.5;
+			camera.lookAt(new THREE.Vector3(0, -10, 7));
+		}
+
+		if(cameraAngle%3 == 1) {
+			camera.rotation.z = 0;
+			camera.position.x = 50;
+			camera.position.y = 75;
+			camera.position.z = 50;
+			camera.lookAt(new THREE.Vector3(0, -150, 0));
+		}
+
+		if(cameraAngle%3 == 2) {
+			camera.rotation.x = Math.PI/2;
+			camera.position.x = 0;
+			camera.position.y = -150;
+			camera.position.z = 500;
+			camera.lookAt(new THREE.Vector3(0, -150, 0));
+			camera.rotation.z = Math.PI;
+		}
+	}
+	
+	var ball;
+	function GenerateCannonBall()
+	{
+		if(balllaunched){
+			scene.remove(ball);
+			balllaunched = false;
+		}
+		GenerateProjectile(Math.random());
+	}
+
+	function GenerateProjectile(num) {
+		if(num < .8){
+			GenerateNormalBall();
+		}
+		else{
+			GenerateExplodingBall();
+		}
+	}
+
+	function GenerateNormalBall()
+	{
+
+		var texture = THREE.ImageUtils.loadTexture('images/balltexture.jpg');
+		var ballGeometry = new THREE.SphereGeometry( 3 * (speedFactor / 2) );
+		var ballMaterial = Physijs.createMaterial( new THREE.MeshLambertMaterial({map:texture}), .95, .95 );
+		ball = new Physijs.SphereMesh( ballGeometry, ballMaterial );
+		ball.setCcdMotionThreshold(1);
+		ball.setCcdSweptSphereRadius(0.4);
+		ball.mass *= .5;
+		ball.name = "cannonball";
+		ball.type = "normal";
+
+	}
+	ballParticles = [];
+	function GenerateExplodingBall()
+	{
+		var texture = THREE.ImageUtils.loadTexture('images/firetexture.jpg');
+		var ballGeometry = new THREE.SphereGeometry( 3 );
+		var ballMaterial = Physijs.createMaterial( new THREE.MeshLambertMaterial({map:texture}), .95, .95 );
+		ball = new Physijs.SphereMesh( ballGeometry, ballMaterial );
+		ball.mass /= 2;
+		ball.setCcdMotionThreshold(1);
+		ball.setCcdSweptSphereRadius(2);
+		ball.name = "cannonball";
+		ball.type = "explode";
+		ball.addEventListener( 'collision', col);
+
+		ball.explode = function()
+		{
+			scene.remove(ball);
+			var x = ball.position.x;
+			var y = ball.position.y;
+			var z = ball.position.z;
+			explode.play();
+			var particleCount = 100;
+
+			for (var p = 0; p < particleCount; p++) {
+
+				var particle = new Physijs.SphereMesh(new THREE.SphereGeometry(.8), new THREE.MeshLambertMaterial({color: 'red'}, .8, .3));
+				var pX = Math.random() * 5 + x,
+					pY = Math.random() * 5 + y,
+					pZ = Math.random() * 5 + z;
+
+				particle.position = new THREE.Vector3(pX, pY, pZ
+				  );
+
+				particle.mass *= 50;
+				particle.name="cannonball";
+				
+
+				ballParticles.push(particle);
+				scene.add(particle);
+				particle.applyCentralImpulse(new THREE.Vector3(
+				(Math.random() * 20000 - 10000),
+				(Math.random() * 20000 - 10000),
+				(Math.random() * 20000 - 10000)
+				));
+			}
+
+			window.setTimeout(function() {
+				for(var i = ballParticles.length; i--;) {
+				scene.remove(ballParticles[i]);
+				ballParticles.splice(i,1);
+			}
+			}, 2000);
+		}
+
+		function col(a,b,c,d) {
+			explode.play();
+			ball.explode();
+			balllaunched = false;
+			GenerateCannonBall();
+			
+		}
+
+	}
+	
+	var targetList = [];
+	function GenerateTarget()
+	{
+		var targ =  new Physijs.SphereMesh(new THREE.SphereGeometry(5), new THREE.MeshLambertMaterial({color: 'red'}, .8, .3));
+		
+
+		targ.setCcdMotionThreshold(1);
+		targ.setCcdSweptSphereRadius(1);
+
+		targ.explode = function() {
+			targ.particles = [];
+			score++;
+			updateScore();
+
+			//Generate Explosion
+			var particleCount = 25;
+
+			var color = 'red'
+
+			for (var p = 0; p < particleCount; p++) {
+
+				var particle = new Physijs.SphereMesh(new THREE.SphereGeometry(.8), new THREE.MeshLambertMaterial({color: color}, .8, .3));
+			  var pX = Math.random() * 5 + targ.position.x,
+				  pY = Math.random() * 5 + targ.position.y,
+				  pZ = Math.random() * 5 + targ.position.z;
+
+				particle.position = new THREE.Vector3(pX, pY, pZ
+				  );
+
+				particle.mass *= explosiveFactor;
+
+
+			  targ.particles.push(particle);
+			  scene.add(particle);
+			}
+			scene.remove(targ);
+			for(var j = 0; j < targ.particles.length; j++){
+				targ.particles[j].applyCentralImpulse(new THREE.Vector3(
+				(Math.random() * 1000 - 500) * explosiveFactor,
+				(Math.random() * 1000 - 500) * explosiveFactor,
+				(Math.random() * 1000 - 500) * explosiveFactor
+				));
+			}
+			splat.play();
+			if(targetList.length == 1)
+				{
+					replaceCastle();
+				}
+			targetList.splice(targetList.indexOf(targ), 1);
+			
+
+			setTimeout(function() {
+				for(var i = targ.particles.length; i--;) {
+						scene.remove(targ.particles[i]);
+						targ.particles.splice(i,1);
+					}
+				
+			}, 3000);
+			
+
+		}
+
+		targ.collisionHandler = function(other_object, rv, rr, cn) {
+			if(rv.x+rv.y+rv.z > 20) {
+				targ.explode();
+			}
+			if(other_object.name == "cannonball"){
+				targ.explode();
+			}
+			if(other_object.name == "ground"){
+				targ.explode();
+			}
+		};
+
+		targ.addEventListener( 'collision', targ.collisionHandler );
+
+		return targ;
+	}
+
+	var textMesh;
+	function GenerateScoreboard() {
+		var material = new THREE.MeshPhongMaterial({
+			color: 0xdddddd
+		});
+		var textGeom = new THREE.TextGeometry( 'Score: '+score, {
+			size: 12,
+			height: 1,
+			font: 'helvetiker',
+			weight: 'normal'
+		});
+		textMesh = new THREE.Mesh( textGeom, material );
+		textMesh.rotation.x = Math.PI / 2;
+		textMesh.rotation.y = 3*Math.PI / 2;
+		textMesh.position.z = 100;
+		textMesh.position.x = 100;
+		textMesh.position.y = 0;
+		scene.add( textMesh );
+	}
+
+	var nameMesh
+	function GenerateName() {
+		var material = new THREE.MeshPhongMaterial({
+			color: 0xdddddd
+		});
+		var textGeom = new THREE.TextGeometry( 'Made by Christopher Pirillo', {
+			size: 8,
+			height: 1,
+			font: 'helvetiker',
+			weight: 'normal'
+		});
+		nameMesh = new THREE.Mesh( textGeom, material );
+		nameMesh.rotation.x = Math.PI;
+		nameMesh.rotation.z = Math.PI / 2;
+		//nameMesh.rotation.y = Math.PI;
+		nameMesh.position.z = 150;
+		nameMesh.position.x = 0;
+		nameMesh.position.y = 0;
+		scene.add( nameMesh );
+	}
+
+	function updateScore() {
+		scene.remove(textMesh);
+		GenerateScoreboard();
+	}
+
+	var firework;
+	function GenerateFirework(x, y, z, color)
+	{
+		firework = [];
+		var particleCount = 100;
+
+		cheer.play();
+
+		if(color == undefined){
+			color = 'red'
+		}
+
+		for (var p = 0; p < particleCount; p++) {
+
+				var particle = new Physijs.SphereMesh(new THREE.SphereGeometry(.8), new THREE.MeshLambertMaterial({color: color}, .8, .3));
+				var pX = Math.random() * 5 + x,
+					pY = Math.random() * 5 + y,
+					pZ = Math.random() * 5 + z;
+
+				particle.position = new THREE.Vector3(pX, pY, pZ
+				  );
+
+				particle.mass /= 20;
+
+				firework.push(particle);
+				scene.add(particle);
+				particle.applyCentralImpulse(new THREE.Vector3(
+				(Math.random() * 50 - 25),
+				(Math.random() * 50 - 25),
+				(Math.random() * 50 - 25)
+				));
+			}
+
+			setTimeout(function() {
+				for(var i = 0; i < firework.length; i++) {
+					scene.remove(firework[i]);
+				}
+			}, 1000)
+	}
+
+	function replaceCastle() {
+
+		if(balllaunched) {
+			scene.remove(ball);
+			balllaunched = false;
+		}
+
+		setTimeout( function() {
+			GenerateFirework(0,0,25, 'white');
+			setTimeout(castleFactory, 2500);
+		}, 1000);
+
+		for(var i = box.length; i--;) {
+			scene.remove(box[i]);
+			box.splice(i)
+		}
+	}
+		
+	function castleFactory()
+	{
+		box = getNewCastle(boardsCleared++);
+	}
+	
+	function getNewCastle(num) {
+		switch (num%4){
+			case 0:
+				return getMiniCastle();
+				break;
+			case 1:
+				return getSmallCastle();
+				break;
+			case 2:
+				return getMediumCastle();
+				break;
+			default:
+				return getMegaCastle();
+			}
+	}
+
+	function getMiniCastle() {
+		var castle = [];
+		targetList = [];
+
+		for(var i = 0; i < 2; i++) {
+			var mesh = new Physijs.BoxMesh(new THREE.BoxGeometry(10,30,10), new THREE.MeshLambertMaterial({color: 'darkgreen'}));
+			castle.push( mesh );
+		}
+		for(var i = 0; i < 2; i++) {
+			var mesh = new Physijs.BoxMesh(new THREE.BoxGeometry(10,10,20), new THREE.MeshLambertMaterial({color: 'darkgreen'}));
+			castle.push( mesh );
+		}
+
+		targetList.push(GenerateTarget());
+		targetList[0].position = new THREE.Vector3(35,0,15);
+
+		castle[0].position.x += 35;
+		castle[1].position.x += 35;
+		castle[2].position.x += 35;
+		castle[3].position.x += 35;
+		castle[0].position.z += 35;
+		castle[2].position.y += 15;
+		castle[1].position.z += 5;
+		castle[2].position.z += 20;
+		castle[3].position.y -= 15;
+		castle[3].position.z += 20;
+
+		scene.add(castle[0]);
+		scene.add(castle[1]);
+		scene.add(castle[2]);
+		scene.add(castle[3]);
+		scene.add(targetList[0]);
+
+		return castle;
+		
+	}
+
+	function getSmallCastle() {
+		var castle = [];
+		targetList = [];
+
+		for(var i = 0; i < 25; i++){
+			var mesh = new Physijs.BoxMesh(new THREE.BoxGeometry(10,20,10), new THREE.MeshLambertMaterial({color: 'darkblue'}));
+			castle.push( mesh );
+		}
+		var sqrt = Math.sqrt(castle.length);
+		for(var i = 0; i < sqrt; i++){
+			for(var j = 0; j < sqrt; j++){
+				castle[i*sqrt + j].position.z += (10*j)+5;
+				castle[i*sqrt + j].position.y += 20*i-35;
+				castle[i*sqrt + j].position.x += 100;
+				castle[i*sqrt + j].mass /= 10;
+				castle[i*sqrt + j].name = "block"+i*sqrt+j;
+				scene.add(castle[i*sqrt + j]);	
+			}
+			targetList.push(GenerateTarget());
+			targetList[i].position.x += 100;
+			targetList[i].position.z += 10*(sqrt+1);
+			targetList[i].position.y += 20*i-35;
+			scene.add(targetList[i]);
+		}
+
+		return castle;
+	}
+
+	function getMegaCastle() {
+		var castle = [];
+		targetList = [];
+		var texture = THREE.ImageUtils.loadTexture('images/stone.jpg');
+		for(var i = 0; i < 135; i++){
+
+			var mesh = new Physijs.BoxMesh(new THREE.BoxGeometry(10,20,10), new THREE.MeshPhongMaterial({map: texture}));
+
+
+			mesh.mass /= 10;
+			castle.push( mesh );
+		}
+		var index = 0;
+		for(var i = 0; i < 5; i++){
+			for(var j = 0; j < 5; j++){
+				
+				castle[index].position.z += (10*j)+5;
+				castle[index].position.y += -50+(20*i);
+				castle[index].position.x += 100;
+				scene.add(castle[index]);	
+				index++;
+			}
+		}
+
+		for(var i = 0; i < 5; i++){
+			for(var j = 0; j < 4; j++){
+				
+				castle[index].position.z += (10*j)+5;
+				castle[index].position.y += -50;
+				castle[index].position.x += 115 + (20*i);
+				castle[index].rotation.z += Math.PI / 2;
+				scene.add(castle[index]);
+				index++;	
+			}
+		}
+
+		for(var i = 0; i < 5; i++){
+			for(var j = 0; j < 4; j++){
+				
+				castle[index].position.z += (10*j)+5;
+				castle[index].position.y += 25;
+				castle[index].position.x += 115 + (20*i);
+				castle[index].rotation.z += Math.PI / 2;
+				scene.add(castle[index]);
+				index++;	
+			}
+		}
+
+		for(var i = 0; i < 5; i++) {
+			castle[index].position.z += (10*i)+5;
+			castle[index].position.y += -50;
+			castle[index].position.x += 90;
+			scene.add(castle[index]);
+			index++;
+
+			castle[index].position.z += (10*i)+5;
+			castle[index].position.y += 30;
+			castle[index].position.x += 90;
+			scene.add(castle[index]);	
+			index++;
+		}
+
+		for(var i = 0; i < 5; i++){
+			for(var j = 0; j < 5; j++){	
+				castle[index].position.z += (10*j)+5;
+				castle[index].position.y += -145+(20*i);
+				castle[index].position.x += 130;
+				scene.add(castle[index]);	
+				index++;
+			}
+		}
+
+		for(var i = 0; i < 5; i++){
+			for(var j = 0; j < 5; j++){
+				
+				castle[index].position.z += (10*j)+5;
+				castle[index].position.y += 40+(20*i);
+				castle[index].position.x += 130;
+				scene.add(castle[index]);	
+				index++;
+			}
+		}
+
+		for(var i = 0; i < 5; i++) {
+			castle[index].position.z += (10*i)+5;
+			castle[index].position.y += 120;
+			castle[index].position.x += 120;
+			scene.add(castle[index]);
+			index++;
+
+			castle[index].position.z += (10*i)+5;
+			castle[index].position.y += -145;
+			castle[index].position.x += 120;
+			scene.add(castle[index]);	
+			index++;
+		}
+
+		var mesh = new Physijs.BoxMesh(new THREE.BoxGeometry(20,20,100), new THREE.MeshLambertMaterial({map: texture}));
+			castle.push( mesh );
+			
+		castle[index].position.x = 130;
+		castle[index].position.y = -15;
+		castle[index].position.z = 50;
+		scene.add(castle[index]);
+		
+
+		targetList.push(GenerateTarget());
+		targetList.push(GenerateTarget());
+		targetList.push(GenerateTarget());
+		targetList.push(GenerateTarget());
+		targetList.push(GenerateTarget());
+
+
+		targetList[0].position = new THREE.Vector3(90, 30, 55);
+		targetList[1].position = new THREE.Vector3(90, -50, 55);
+		targetList[2].position = new THREE.Vector3(125, -15, 105);
+		targetList[3].position = new THREE.Vector3(130, -145, 55);
+		targetList[4].position = new THREE.Vector3(130, 120, 55);
+
+
+		scene.add(targetList[0]);
+		scene.add(targetList[1]);
+		scene.add(targetList[2]);
+		scene.add(targetList[3]);		
+		scene.add(targetList[4]);		
+		
+
+		return castle;
+	}
+
+	function getMediumCastle() {
+		var castle = [];
+		targetList = [];
+
+		var mesh 
+
+		for(var i = 0; i < 50; i++){
+			var mesh = new Physijs.BoxMesh(new THREE.BoxGeometry(20,20,20), new THREE.MeshLambertMaterial({color: 'purple'}));
+			mesh.mass /= 50;
+			castle.push( mesh );
+		}
+		var index = 0;
+		var sqrt = Math.sqrt(castle.length);
+		for(var i = 0; i < 5; i++){
+			for(var j = 0; j < i+1; j++){
+				castle[index].position.x = 100;
+				castle[index].position.y = 20*i-35;
+				castle[index].position.z = 20*j+10;
+				scene.add(castle[index]);	
+				index++;
+
+				castle[index].position.x = 120;
+				castle[index].position.y = 45-(20*i);
+				castle[index].position.z = 20*j+10;
+				scene.add(castle[index]);	
+				index++;	
+			}
+			targetList.push(GenerateTarget());
+			targetList[2*i].position.x += 100;
+			targetList[2*i].position.y += 20*i-35;
+			targetList[2*i].position.z += 20*(i+1)+5;
+			scene.add(targetList[2*i]);
+			targetList.push(GenerateTarget());
+			targetList[2*i+1].position.x += 120;
+			targetList[2*i+1].position.y += 45-(20*i);
+			targetList[2*i+1].position.z += 20*(i+1)+5;
+			scene.add(targetList[2*i+1]);
+		}
+
+		return castle;
+	}
+
+	var skyboxMesh;
+	function GenerateSkybox() {
+
+		var skyTexture = THREE.ImageUtils.loadTexture("images/sky3.jpg");
+		
+		skyboxMesh = new THREE.Mesh(new THREE.SphereGeometry(500, 24, 24), new THREE.MeshLambertMaterial({map:skyTexture}));
+		skyboxMesh.scale.x = -1;
+		skyboxMesh.emissive = new THREE.Color(0x404040);
+		scene2.add(skyboxMesh);
+	}
+
+	function createCamera() {
+		camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.1, 100000 );
+		camera.position.x = 0;
+		camera.position.y = 7;
+		camera.position.z = 3.5;
+		camera.up = new THREE.Vector3(0,0,1);
+		camera.lookAt(new THREE.Vector3(0, -10, 7));
+
+		cameraPosition2 = new THREE.Vector3(0, 0, Math.PI);
+		cameraPosition1 = new THREE.Vector3(-1.2624806563861533, 0.294622718619534, 3.0493775832436167);
+	}
+
+	var scene2, cameraPosition3, cameraPosition2, cameraPosition1;
+	function init()
+	{
+		keyboard = new THREEx.KeyboardState();
+
+		// New scene creation and initialization for Physijs.
+		// Generate Scene
+		scene = new Physijs.Scene();
+		scene2 = new THREE.Scene();
+		scene.setGravity(new THREE.Vector3( 0, 0, -30 ));
+		scene.addEventListener('update', function() 
+		{	
+			scene.simulate(undefined, 1);
+		});
+
+		
+		
+		createCamera();
+		
+		renderer = new THREE.WebGLRenderer();
+		renderer.setClearColor( 0x000000, 1.0 );
+		renderer.setSize( window.innerWidth*.98, window.innerHeight*.98 );
+		renderer.shadowMapEnabled = true;
+		renderer.autoClear = false;
+
+		// Load Sounds
+		loadSounds();
+
+		// 1. Drop in ground plane
+		GenerateGroundPlane();
+
+		// Generate cannon
+		GenerateCannon();
+		
+		// Generate cannon ball
+		GenerateCannonBall();
+		
+		// Generate Castle
+		castleFactory();
+		
+		// Generate Scoreboard
+		GenerateScoreboard();
+
+		// Generate Skybox
+		GenerateSkybox();
+
+		// Generate Christopher Pirillo name
+		GenerateName();
+
+		var spotLight = new THREE.SpotLight( 0xffffff );
+		spotLight.position.set( -100, 0, 300 );
+		spotLight.shadowCameraNear = 10;
+		spotLight.shadowCameraFar = 100;
+		spotLight.castShadow = true;
+		spotLight.intensity = 3;
+		scene.add(spotLight);
+		
+		var light = new THREE.AmbientLight( 0x404040 ); // soft white light
+		scene.add( light );
+
+		var light2 = new THREE.AmbientLight( 0xFFFFFF ); // soft white light
+		scene2.add( light2 );
+
+		cannon.add( camera );
+		document.body.appendChild( renderer.domElement );
+
+		requestAnimationFrame(render);
+		scene.simulate(undefined, 1);
+	}
+
+	var balllaunched = false;
+	var speedFactor = 2;
+	function render()
+	{	
+		//skyboxMesh.rotation.x += .001;
+		skyboxMesh.rotation.y += .0003;
+		skyboxMesh.rotation.z += .0003;
+
+		for(var i = 0; i < targetList.length; i++) {
+				if(targetList[i].position.z <= 5) {
+					targetList[i].explode();
+				}
+			}
+
+		if( keyboard.pressed("left") )
+		{
+			if(cannon.rotation.z - Math.PI/2 < Math.PI/4){
+				cannon.rotation.z += .006;
+			}
+			
+		}
+		else if( keyboard.pressed("right") )
+		{
+			if(cannon.rotation.z - Math.PI/2 > -Math.PI/4)
+			{
+				cannon.rotation.z -= .006;
+			}
+		}
+		else if( keyboard.pressed("up") )
+		{
+			if(cannon.rotation.y > -( Math.PI / 3 ))
+			{
+				cannon.rotation.y -= .01;
+			}
+		}	
+		else if( keyboard.pressed("down") )
+		{
+			//camera.position.x -= 1;
+			if(cannon.rotation.y < 0)
+			{
+				cannon.rotation.y += .01;
+			}
+		}
+		else if( !balllaunched && keyboard.pressed("space") )
+		{
+			ballsFired++;
+			$("#numShots span").text(ballsFired);
+			ball.position.x = (cannon.position.x+10) - Math.abs(((cannon.rotation.z - Math.PI/2) * Math.PI)); 
+			ball.position.y = cannon.position.y + (3.2*((cannon.rotation.z - Math.PI/2) * Math.PI));
+			ball.position.z = cannon.position.z + 3*(-cannon.rotation.y * Math.PI);
+			scene.add(ball);
+			ball.applyCentralImpulse( 
+				new THREE.Vector3(  (1*5000*Math.abs(Math.cos(cannon.rotation.z - Math.PI/2)))*(1/20*Math.pow(ball.geometry.boundingSphere.radius,3)), (-( Math.PI / 2 - cannon.rotation.z ) * 4500)*(1/20*Math.pow(ball.geometry.boundingSphere.radius,3)), ((-cannon.rotation.y * 7000) * (1/20*Math.pow(ball.geometry.boundingSphere.radius,3))) * Math.cos(cannon.rotation.z - Math.PI/2)  ) 
+				);
+
+			balllaunched = true;
+
+		}
+
+		else if( balllaunched && keyboard.pressed("escape") )
+		{	
+			balllaunched = false;
+			if(ball.type == "explode") {
+				ball.explode();
+			}
+			else{
+				scene.remove(ball);
+			}
+			GenerateCannonBall();
+		}
+		
+		if( balllaunched )
+		{
+			for(var i=0; i < targetList.length; i++){
+				if(ball.position.distanceTo(targetList[i].position) < (ball.geometry.boundingSphere.radius + targetList[i].geometry.boundingSphere.radius+1)){
+					targetList[i].explode();
+				}
+			}
+
+			if(ball.position.z < -5){
+				GenerateCannonBall();
+				balllaunched = false;
+			}
+
+			if(ball.position.distanceTo(cannon.position) > 500){
+				GenerateCannonBall();
+				balllaunched = false;
+			}
+		}
+
+		requestAnimationFrame( render );
+		renderer.clear();
+		renderer.render(scene, camera );			
+		renderer.render(scene2, camera );
+		
+	}
+
+	window.onload = init;
+
+</script>
+</body>
+</html>
